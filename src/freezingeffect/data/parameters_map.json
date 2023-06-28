@@ -1,0 +1,1 @@
+{"totP": ["Depolarization", false, true, false, false], "linR": ["Linear retardance (\u00b0)", false, false, false, false], "totD": ["Diattenuation", false, false, true, false], "azimuth": ["Azimuth of optical axis (\u00b0)", true, false, false, false], "M11": ["Intensity", false, false, false, true]}

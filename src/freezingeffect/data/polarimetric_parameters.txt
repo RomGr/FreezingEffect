@@ -1,0 +1,4 @@
+linR
+totD
+azimuth
+totP
