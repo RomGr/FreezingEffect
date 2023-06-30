@@ -422,7 +422,7 @@ def create_df(dfs):
     df = pd.DataFrame(values)
     return df
 
-def combine_data_cv(df, azimuth = False):
+def combine_data_cv(df, nb_time_points, azimuth = False):
     """
     combine_data_cv allows to remove outlier values (not used in the analysis) and prepare the data for fold change analysis
     
@@ -442,13 +442,12 @@ def combine_data_cv(df, azimuth = False):
         df_substracted = df.apply(lambda x: subtract_angles(x), axis=0)
     else:
         df_substracted = df/df.loc[0]
-    df_cv, cv_big = remove_outliers(df_substracted)
-    for idx, cv in enumerate(cv_big):
+    df_cv, cv_big = remove_outliers(df_substracted, nb_time_points)
+    for _, cv in enumerate(cv_big):
         if cv:
             pass
         else:
             pass
-            # df_cv[idx] = [1.0,math.nan,math.nan,math.nan,math.nan,math.nan]
         
     return df_cv
 
@@ -489,7 +488,7 @@ def subtract_angle(targetA, sourceA):
     a = targetA - sourceA
     return abs((a + 90) % 180 - 90)
 
-def remove_outliers(df_cv):
+def remove_outliers(df_cv, nb_time_points):
     """
     remove_outliers allows to check column to remove to remove outlier values (located at +- 2 stds from the mean) - not used in the analysis
     
@@ -505,11 +504,9 @@ def remove_outliers(df_cv):
     ~cv_big : boolean list
         the columns to remove
     """
-    lower_boundary, upper_boundary = determine_outlier_thresholds_std(df_cv.loc[1])
-    cv_big = np.logical_or(df_cv.loc[1] > upper_boundary, df_cv.loc[1] < lower_boundary)
-
-    lower_boundary, upper_boundary = determine_outlier_thresholds_std(df_cv.loc[2])
-    cv_big = np.logical_or(cv_big, np.logical_or(df_cv.loc[2] > upper_boundary, df_cv.loc[2] < lower_boundary))
+    for idx in range(1, nb_time_points):
+        lower_boundary, upper_boundary = determine_outlier_thresholds_std(df_cv.loc[idx])
+        cv_big = np.logical_or(df_cv.loc[idx] > upper_boundary, df_cv.loc[idx] < lower_boundary)
     
     return df_cv, ~cv_big
 

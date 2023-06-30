@@ -37,6 +37,11 @@ def get_the_base_dirs(data_folder_path):
             
         # 2. remove previously acquired data to allow the selection of new ROIs
         path_results = os.path.join(data_folder_path, folder, 'polarimetry/550nm/50x50_images')
+        try:
+            os.mkdir(path_results)
+        except FileExistsError:
+            pass
+        
         for filename in os.listdir(path_results):
             file_path = os.path.join(path_results, filename)
             try:
@@ -208,36 +213,36 @@ def merge_masks(BG, WM, GM, path, bg):
         for idy, y in enumerate(x):
             
             if bg:
-                # 1. check if it is background
-                if BG[idx, idy] == 255:
-                    BG_merged[idx, idy] = 255
-                    all_merged[idx, idy] = 128
-                
-                # 2. if not, check if the pixel is white matter
-                elif WM[idx, idy] == 255:
+                # 1. check if the pixel is white matter
+                if WM[idx, idy] == 255:
                     WM_merged[idx, idy] = 255
-                    all_merged[idx, idy] = 0
+                    all_merged[idx, idy] = 255
                     
+                # 2. if not, check if it is background
+                elif BG[idx, idy] == 255:
+                    BG_merged[idx, idy] = 255
+                    all_merged[idx, idy] = 0
+                
                 # 3. if not, it is grey matter
                 else:
                     GM_merged[idx, idy] = 255
-                    all_merged[idx, idy] = 255
+                    all_merged[idx, idy] = 128
             
             else:
                 # 1. check if it is background
                 if WM[idx, idy] == 255:
                     WM_merged[idx, idy] = 255
-                    all_merged[idx, idy] = 0
+                    all_merged[idx, idy] = 255
 
                 # 2. if not, check if the pixel is white matter
                 elif BG[idx, idy] == 255:
                     BG_merged[idx, idy] = 255
-                    all_merged[idx, idy] = 128
+                    all_merged[idx, idy] = 0
                     
                 # 3. if not, it is grey matter
                 else:
                     GM_merged[idx, idy] = 255
-                    all_merged[idx, idy] = 255
+                    all_merged[idx, idy] = 128
 
     # save the masks
     save_image(path, WM_merged, 'WM_merged')

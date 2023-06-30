@@ -579,7 +579,7 @@ if OPTs.propagateIMGFlag
     elseif OPTs.propagateIMGmode == 1
         disp(' * PROPAGATE IMG(s) as: FLOAT (grayscale intensities)');
     else % OPTs.propagateIMGmode == 2
-        disp(' * PROPAGATE IMG(s) as: INTEGERS (annotation lables)');
+        disp(' * PROPAGATE IMG(s) as: INTEGERS (annotation labels)');
     end
 end
 disp(' ');

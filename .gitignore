@@ -103,3 +103,7 @@ ENV/
 
 # IDE settings
 .vscode/
+
+# SPECIFIC folders
+results/comparaison/*
+src/freezingeffect/alignment/*
