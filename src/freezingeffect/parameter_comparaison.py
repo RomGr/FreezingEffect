@@ -32,7 +32,8 @@ def get_parameters():
     match_sequence = 'FRE-FR'
     measurement = 'comparaison'
     max_ = params_ROIs['number_of_random_squares']
-    return wavelength, match_sequence, measurement, max_
+    max_nb = params_ROIs['max_number_of_random_squares']
+    return wavelength, match_sequence, measurement, max_, max_nb
 
 
 def get_data_folders(path_folder, wavelength = '550nm', match_sequence = 'PIG-CUSA'):
@@ -698,7 +699,7 @@ def create_test_df(paired_t_test, parameter = 'median'):
     return df_grouped
 
 
-def create_df_prism(data_dict, max_):
+def create_df_prism(data_dict, max_nb_of_squares):
     """
     create_test_df is used to create the dataframe that was used to create the plots in prism
 
@@ -714,6 +715,10 @@ def create_df_prism(data_dict, max_):
     df : pandas dataframe
         the dataframe that can be used to generate the plots in prism
     """
+    for idx in range(data_dict['GM'].shape[1], max_nb_of_squares):
+        data_dict['GM'][idx] = np.nan
+    for idx in range(data_dict['WM'].shape[1], max_nb_of_squares):
+        data_dict['WM'][idx] = np.nan
     data = np.hstack([data_dict['GM'], data_dict['WM']])
     df = pd.DataFrame(data)
     return df
