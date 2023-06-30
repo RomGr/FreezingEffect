@@ -105,10 +105,6 @@ ENV/
 .vscode/
 
 # SPECIFIC folders
-<<<<<<< HEAD
-results/comparaison/*
-src/freezingeffect/alignment/*
-=======
-results/
-src/freezingeffect/alignment
->>>>>>> 5a2e7d73a27aa5f589c7f0c24d93a5423c2d2b5b
+results/comparaison/
+src/freezingeffect/alignment/
+
