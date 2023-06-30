@@ -8,6 +8,7 @@ import shutil
 import traceback
 
 from freezingeffect.selection_of_ROIs import analyze_and_get_histograms, load_data_mm, generate_pixel_image, save_parameters
+from freezingeffect.helpers import load_parameters_ROIs
 
 def collect_data_propagated(WM, path_align_folder, propagation_list, output_folders):
     """
@@ -66,13 +67,13 @@ def collect_data_propagated(WM, path_align_folder, propagation_list, output_fold
                                                                     mask_matter_afters, mask_matter_after_opposites)):
 
             to_remove = check_outliers_propagation([all_folder], path_alignment, new_folder_name, mask_matter_after, 
-                                                       mask_matter_after_opposite, path_align_folder, elastic = True)
+                                                       mask_matter_after_opposite, path_align_folder, WM)
 
             if len(to_remove) > 0:
                 remove.append([to_remove[0], all_folder])
                 
-            data = propagate_measurements(new_folder_name, [all_folder], path_folders, wavelength, output_folders[path_alignment],  square_size, 
-                                          mask_matter_after, mask_matter_after_opposite, path_align_folder, check_outliers_bool = False, create_dir = True)
+            data = propagate_measurements(new_folder_name, [all_folder], path_folders, wavelength, output_folders[path_alignment], square_size, 
+                                          path_align_folder, WM, create_dir = True)
 
             with open(os.path.join(path_folders, all_folder, 'polarimetry', '550nm', '50x50_images', 
                                 new_folder_name + '_align', 'data_raw' + '.pickle'), 'wb') as handle:
@@ -85,8 +86,7 @@ def collect_data_propagated(WM, path_align_folder, propagation_list, output_fold
     generate_summary_file(propagation_list)
     
 
-def check_outliers_propagation(all_folders, path_alignment, new_folder_name, mask_matter_after, mask_matter_after_opposite, path_align_folder,
-                               elastic = True):
+def check_outliers_propagation(all_folders, path_alignment, new_folder_name, mask_matter_after, mask_matter_after_opposite, path_align_folder, WM):
     """
     check_outliers_propagation is the master function to select and load the mask associated to a specific ROI, and to verify
     if it is an outlier (defined as ROI moving from grey/white matter to white/grey matter or background)
@@ -133,12 +133,9 @@ def check_outliers_propagation(all_folders, path_alignment, new_folder_name, mas
         assert len(img_of_interest) == 2
 
         for img in img_of_interest:
-            if img.endswith('1.png') and elastic:
-                path_image = path_aligned + '/invReg/' + img
-            elif img.endswith('0.png') and not elastic:
-                path_image = path_aligned + '/invReg/' + img
+            path_image = os.path.join(path_aligned, 'invReg', img)
             
-        mask = load_propagated_mask(path_image, new_folder_name)
+        mask = load_propagated_mask(path_image, new_folder_name, WM)
         
         if check_outliers(mask, mask_matter_after, mask_matter_after_opposite):
             to_remove.append(new_folder_name)
@@ -146,7 +143,7 @@ def check_outliers_propagation(all_folders, path_alignment, new_folder_name, mas
     return to_remove
 
 
-def load_propagated_mask(path_image, new_folder_name = 'WM_1'):
+def load_propagated_mask(path_image, new_folder_name, WM):
     """
     load the propagated mask from the image loacated at the path given as an input
 
@@ -162,7 +159,12 @@ def load_propagated_mask(path_image, new_folder_name = 'WM_1'):
     imnp : array of shape (516, 388)
         the mask for the ROI
     """    
-    val = int(new_folder_name.split('_')[-1])
+    param_ROIs = load_parameters_ROIs()
+    
+    if WM:
+        val = int(new_folder_name.split('_')[-1])
+    else:
+        val = int(new_folder_name.split('_')[-1]) + param_ROIs['max_number_of_random_squares']
     
     im = Image.open(path_image)
     imnp = np.array(im)
@@ -228,8 +230,8 @@ def check_outliers(mask, mask_matter_after, mask_matter_after_opposite):
     return corrupt
 
 
-def propagate_measurements(new_folder_name, all_folders, path_folders, wavelength, path_alignment, square_size, mask_matter_after, 
-                           mask_matter_after_opposite, path_align_folder, check_outliers_bool = False, create_dir = False):
+def propagate_measurements(new_folder_name, all_folders, path_folders, wavelength, path_alignment, square_size, 
+                           path_align_folder, WM, create_dir = False):
     """
     propagate_measurements is the master function used to propagate the ROIs and collect the data for the 
     measurement made after FF for one ROI
@@ -270,7 +272,7 @@ def propagate_measurements(new_folder_name, all_folders, path_folders, wavelengt
         create_output_dir(output_directory, all_folders, path_folders, wavelength)
     
     data, dfs, aligned_images_path = get_data_propagation(output_directory, all_folders, path_folders, wavelength, path_alignment, square_size, 
-                    new_folder_name, path_align_folder, create_dir = create_dir)
+                    new_folder_name, path_align_folder, WM, create_dir = create_dir)
 
     return data, dfs, aligned_images_path
     
@@ -342,7 +344,7 @@ def create_output_dir(output_directory, all_folders, path_folders, wavelength):
         
         
 def get_data_propagation(output_directory, all_folders, path_folders, wavelength, path_alignment, square_size, 
-                         new_folder_name, path_align_folder, elastic = True, create_dir = False):
+                         new_folder_name, path_align_folder, WM, create_dir = False):
     """
     this function allows to extract the values of the polarimetric parameters in the propagated ROIs
 
@@ -426,13 +428,10 @@ def get_data_propagation(output_directory, all_folders, path_folders, wavelength
                 assert len(img_of_interest) == 2
 
                 for img in img_of_interest:
-                    if img.endswith('1.png') and elastic:
-                        path_image = path_aligned + '/invReg/' + img
-                    elif img.endswith('0.png') and not elastic:
-                        path_image = path_aligned + '/invReg/' + img
+                    path_image = os.path.join(path_aligned, 'invReg', img)
 
             # load the propagated mask image
-            mask = load_propagated_mask(path_image, new_folder_name)
+            mask = load_propagated_mask(path_image, new_folder_name, WM)
             
             # load the data (polarimetric parameters)
             MM_maps, MM = load_data_mm(path_folder)

@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matlab.engine
 
+from freezingeffect.helpers import load_parameters_ROIs
 
 def add_all_folders(path_folder, wavelength, path_alignment, pattern = '_FR_'):
     """
@@ -44,7 +45,13 @@ def add_all_folders(path_folder, wavelength, path_alignment, pattern = '_FR_'):
         now = datetime.now()
         dt_string = path_folder.split('\\')[-1] +'__' + now.strftime("%d/%m/%Y %H:%M:%S").replace(' ', '_').replace('/', '_').replace(':', '_')
         path_alignment = os.path.join(path_alignment, dt_string)
-        os.mkdir(path_alignment)
+        created = False
+        while not created:
+            try:
+                os.mkdir(path_alignment)
+                created = True
+            except:
+                print('Folder already exists, trying again...')
         os.mkdir(os.path.join(path_alignment, 'mask'))
 
         target = path_alignment
@@ -125,7 +132,7 @@ def create_and_save_mask(imnp_mask):
     return img
 
 
-def generate_combined_mask(propagation_list, path_align_folder):
+def generate_combined_mask(propagation_lists, path_align_folder):
     """
     generate_combined_mask generates a combined mask, compiling the masks generated for each ROI into a single one to fasten up the process
     
@@ -139,13 +146,18 @@ def generate_combined_mask(propagation_list, path_align_folder):
     propagation_list : list
         a list containing the information about the ROIs (such as the origin measurement name, the square size...) updated with the new path for the propagation folder
     """
+    param_ROIs = load_parameters_ROIs()
+    
     imgs = {}
     
     # obtain all the ROIs masks
     for file in os.listdir(path_align_folder):
         for img_path in os.listdir(os.path.join(path_align_folder, file, 'mask')):
             im = plt.imread(os.path.join(path_align_folder, file, 'mask', img_path))
-            imgs[int(img_path.split('WM_')[-1].split('GM_')[-1].split('_')[0])] = im
+            if 'WM' in img_path:
+                imgs[int(img_path.split('WM_')[-1].split('_')[0])] = im
+            elif 'GM' in img_path:
+                imgs[int(img_path.split('GM_')[-1].split('_')[0]) + param_ROIs["max_number_of_random_squares"]] = im
     
     # compile them in a single mask
     base = np.zeros(imgs[1].shape)
@@ -171,14 +183,16 @@ def generate_combined_mask(propagation_list, path_align_folder):
                 if 'P-T0_' in fname:
                     os.rename(os.path.join(path_folder, fname), 
                               os.path.join(path_folder, fname.replace('realsize', 'realsize_ref_align')))
-                    
         else:
             pass
             shutil.rmtree(path_folder)
             
-    for prop in propagation_list:
-        prop[-2] = path_folder_propagation
-    return propagation_list
+            
+    for _, propagation_list in propagation_lists.items():
+        for prop in propagation_list:
+            prop[-2] = path_folder_propagation
+        
+    return propagation_lists
 
 
 def do_alignment(path_align_folder):
@@ -288,3 +302,66 @@ def move_folders(output_folders, log_name, path_align_folder):
         shutil.move(log, output_folder)
         
     return output_folders
+
+
+def test_generate_combined_mask(propagation_lists, path_align_folder):
+    """
+    generate_combined_mask generates a combined mask, compiling the masks generated for each ROI into a single one to fasten up the process
+    
+    Parameters
+    ----------
+    propagation_list : list
+        a list containing the information about the ROIs (such as the origin measurement name, the square size...)
+    
+    Returns
+    ----------
+    propagation_list : list
+        a list containing the information about the ROIs (such as the origin measurement name, the square size...) updated with the new path for the propagation folder
+    """
+    param_ROIs = load_parameters_ROIs()
+    
+    imgs = {}
+    
+    # obtain all the ROIs masks
+    for file in os.listdir(path_align_folder):
+        for img_path in os.listdir(os.path.join(path_align_folder, file, 'mask')):
+            im = plt.imread(os.path.join(path_align_folder, file, 'mask', img_path))
+            if 'WM' in img_path:
+                imgs[int(img_path.split('WM_')[-1].split('_')[0])] = im
+            elif 'GM' in img_path:
+                imgs[int(img_path.split('GM_')[-1].split('_')[0]) + param_ROIs["max_number_of_random_squares"]] = im
+    
+    # compile them in a single mask
+    base = np.zeros(imgs[1].shape)
+    for val, img in imgs.items():
+        assert val < 255
+        for idx, x in enumerate(img):
+            for idy, y in enumerate(x):
+                if y != 0:
+                    base[idx, idy] = val
+
+    for img_path in os.listdir(os.path.join(path_align_folder, file, 'mask')):
+        os.remove(os.path.join(path_align_folder, file, 'mask', img_path))
+
+    mask = Image.fromarray(base)
+    mask = mask.convert("L")
+    mask.save(os.path.join(path_align_folder, file, 'mask', 'mask.png'))
+    
+    for folder in os.listdir(path_align_folder):
+        path_folder = os.path.join(path_align_folder, folder)
+        if file in folder:
+            path_folder_propagation = path_folder
+            for fname in os.listdir(path_folder):
+                if 'P-T0_' in fname:
+                    os.rename(os.path.join(path_folder, fname), 
+                              os.path.join(path_folder, fname.replace('realsize', 'realsize_ref_align')))
+        else:
+            pass
+            shutil.rmtree(path_folder)
+            
+            
+    for _, propagation_list in propagation_lists.items():
+        for prop in propagation_list:
+            prop[-2] = path_folder_propagation
+        
+    return propagation_lists
