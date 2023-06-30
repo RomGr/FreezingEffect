@@ -501,7 +501,6 @@ def get_square_coordinates(mask, square_size, grid, MM, coordinates = None):
     """    
     found = False
     counter = 0
-    coord_ = None
     
     while not found and counter < 1000:
         randomRow, randomCol = get_random_pixel(mask)
@@ -511,22 +510,22 @@ def get_square_coordinates(mask, square_size, grid, MM, coordinates = None):
             # print(select_region(mask.shape, mask, randomRow, randomCol))
             region, grided, coordinates = select_region(mask.shape, mask, randomRow, randomCol, square_size, grid)
             
+            # check if the region is part of the correct tissue type...
             positive_mask = search_for_validity(region, 0, MM = MM, coordinates = coordinates)
+            # ...and if it has not been selected before
             positive_grid = search_for_validity(grided, 1, MM = MM, coordinates = coordinates)
-
-            positive = positive_mask and positive_grid
             
+            positive = positive_mask and positive_grid
             if positive:
                 found = True
-                coord_ = coordinates
                 grid = update_grid(grid, coordinates)
 
             counter += 1
             
     if counter == 1000:
         pass
-    
-    return coordinates, grid
+    else:
+        return coordinates, grid
 
 
 def get_random_pixel(mask):
@@ -647,7 +646,7 @@ def search_for_validity(mask, idx, MM, coordinates = None):
         indicates if the consitions were fulfilled
     """
     positive = True
-    
+        
     # 1. contains also pixels labelled as the tissue type studied
     for row in mask:
         for y in row:
@@ -656,9 +655,10 @@ def search_for_validity(mask, idx, MM, coordinates = None):
     
     # 2. contains more than 80% of valid pixels
     if positive and idx == 1:
-        positive = sum(sum(MM['Msk'][coordinates[2]:coordinates[3], coordinates[0]:coordinates[1]])) > 0.8 * mask.shape[0]*mask.shape[1]
+        positive = sum(sum(MM['Msk'][coordinates[2]:coordinates[3], coordinates[0]:coordinates[1]])) > 0.6 * mask.shape[0]*mask.shape[1]
         if not positive:
             pass
+    
     return positive
 
 
