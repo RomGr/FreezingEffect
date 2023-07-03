@@ -10,7 +10,7 @@ import time
 from freezingeffect.selection_of_ROIs import analyze_and_get_histograms, load_data_mm, generate_pixel_image, save_parameters
 from freezingeffect.helpers import load_parameters_ROIs
 
-def collect_data_propagated(WM, path_align_folder, propagation_list, output_folders):
+def collect_data_propagated(WM, path_align_folder, propagation_list, output_folders, data_folder_path):
     """
     check_outliers is function checking if a ROI should be removed because if it is an outlier 
     (defined as ROI moving from grey/white matter to white/grey matter or background)
@@ -68,8 +68,15 @@ def collect_data_propagated(WM, path_align_folder, propagation_list, output_fold
     remove = []
     for element in propagation_list:
         propagate_measurement(element, mask_matter_afters, mask_matter_after_opposites, path_align_folder, WM, output_folders, MMs, remove)
-        
-
+    
+    images_WM, images_GM = get_the_imgs(propagation_list[0], data_folder_path)
+    for folder, img in images_WM.items():
+        image = Image.fromarray(img).convert('RGB')
+        image.save(os.path.join(data_folder_path, folder, 'polarimetry', '550nm', '50x50_images', 'WM_all_ROIs.png'))
+    for folder, img in images_GM.items():
+        image = Image.fromarray(img).convert('RGB')
+        image.save(os.path.join(data_folder_path, folder, 'polarimetry', '550nm', '50x50_images', 'GM_all_ROIs.png'))
+    
     path_folders = propagation_list[0][2]
     all_folders = propagation_list[0][1]
     with open(os.path.join(path_folders, all_folders[0], 'polarimetry', '550nm', '50x50_images', 
@@ -78,6 +85,34 @@ def collect_data_propagated(WM, path_align_folder, propagation_list, output_fold
 
     generate_summary_file(propagation_list)
     
+def get_the_imgs(element, data_folder_path):
+    folders = element[1][1:]
+    path_img = element[4]
+    images_WM = {}
+    images_GM = {}
+    for folder in folders:
+        path_i = os.path.join(path_img, 'invReg', 'mask_PrpgTo_' + folder + '_550nm_realsize_AffineElastic_TransformParameters_1.png')
+        path_i = path_i.replace('to_align', 'aligned')
+        image = np.array(Image.open(path_i))
+        
+        img_gs = np.array(Image.open(os.path.join(data_folder_path, folder, 'polarimetry', '550nm', 'Intensity_img.png')))
+        for idx, x in enumerate(image):
+            for idy, y in enumerate(x):
+                if y != 0:
+                    # if y > 0 and y <= 25:
+                    if y > 25:
+                        img_gs[idx, idy] = 255
+        images_GM[folder] = img_gs
+        
+        img_gs = np.array(Image.open(os.path.join(data_folder_path, folder, 'polarimetry', '550nm', 'Intensity_img.png')))
+        for idx, x in enumerate(image):
+            for idy, y in enumerate(x):
+                if y != 0:
+                    if y > 0 and y <= 25:
+                        img_gs[idx, idy] = 0
+        images_WM[folder] = img_gs
+        
+    return images_WM, images_GM
     
 def propagate_measurement(element, mask_matter_afters, mask_matter_after_opposites, path_align_folder, WM, output_folders, MMs, remove):
     new_folder_name, all_folders, path_folders, wavelength, path_alignment, square_size = element

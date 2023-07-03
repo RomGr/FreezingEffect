@@ -334,14 +334,14 @@ def get_data_per_time(test_df, times, parameter, metric):
         data_time_normalized[time] = list()
 
     # iterate over each df
-    for fname, df in test_df.items():
+    for _, df in test_df.items():
         df['fname'] = find_names(list(df['fname']))
         
         # search for the data relative to the parameters of interest
         parameter_df = df[df['parameter'] == parameter]
         
         reference = 0
-        for idx, row in parameter_df.iterrows():
+        for _, row in parameter_df.iterrows():
             match = []
             for time in times:
                 if re.findall(time, row['fname']):
@@ -418,7 +418,7 @@ def create_df(dfs):
         the converted dataframe
     """
     values = []
-    for time_point, val in dfs.items():
+    for _, val in dfs.items():
         values.append(val)
     df = pd.DataFrame(values)
     return df
@@ -443,6 +443,7 @@ def combine_data_cv(df, nb_time_points, azimuth = False):
         df_substracted = df.apply(lambda x: subtract_angles(x), axis=0)
     else:
         df_substracted = df/df.loc[0]
+        
     df_cv, cv_big = remove_outliers(df_substracted, nb_time_points)
     for _, cv in enumerate(cv_big):
         if cv:
@@ -465,7 +466,7 @@ def subtract_angles(column):
     -------
     the differences of the angles in a list with the first one
     """
-    original_angle = column[0]
+    original_angle = column[1]
     res = []
     for c in column:
         res.append(subtract_angle(original_angle, c))

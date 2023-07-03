@@ -733,7 +733,8 @@ def histogram_analysis(all_coordinates, MM_maps, param_ROIs, coordinates_long, p
         _ = parameters_histograms(data[-1], path_output)
         _ = save_parameters(data[-1], path_output)
         
-    imnp_mask = generate_pixel_image(coordinates_long, path_image, path_output, [square_number, [square_size_horizontal, square_size_vertical], orientation], WM = True)
+    imnp_mask = generate_pixel_image(coordinates_long, path_image, path_output, 
+                                     [square_number, [square_size_horizontal, square_size_vertical], orientation], WM = True)
     
     try:
         imnp_mask_single = generate_pixel_image(coordinates_long, os.path.join(path_folder_50x50, path_image_ori), path_output, 
@@ -788,7 +789,7 @@ def analyze_and_get_histograms(MM_maps, MM, coordinates, imnp = None, angle = 0)
     results = {}
     values = get_param_ROIs(coordinates, MM_maps, parameters, masked, param_links, MM)
     for param, _ in param_links.items():
-        results[param] = get_area_of_interest(coordinates, MM_maps[param], parameters[param], masked, param, values, mat = MM)
+        results[param] = get_area_of_interest(parameters[param], param, values)
     
     return coordinates, results
 
@@ -810,7 +811,7 @@ def get_param_ROIs(params, matrix, param, masked, param_links, mat):
             values[param] = np.ma.compressed(np.ma.masked_where(~mask,matrix[param]))
     return values
     
-def get_area_of_interest(params, matrix, param, masked, parameter, values, mat):
+def get_area_of_interest(param, parameter, values):
     """
     get_area_of_interest extracts the values of one parameter in the ROI, as well as the statistical descriptors
 
@@ -835,14 +836,20 @@ def get_area_of_interest(params, matrix, param, masked, parameter, values, mat):
     """
     listed = values[parameter]
 
-    if parameter == 'azimuth':
-        mean = circmean(listed, high=180)
-        stdev = circstd(listed, high=180)
-        median = mean
-    else:
-        mean = np.mean(listed)
-        stdev = np.std(listed)
-        median = np.median(listed)
+    try:
+        assert len(listed) > 0
+        if parameter == 'azimuth':
+            mean = circmean(listed, high=180)
+            stdev = circstd(listed, high=180)
+            median = mean
+        else:
+            mean = np.mean(listed)
+            stdev = np.std(listed)
+            median = np.median(listed)
+    except:
+        mean = np.nan
+        stdev = np.nan
+        median = np.nan
 
     bins = np.linspace(param['borders'][0], param['borders'][1], num = param['num_bins'])
     data = plt.hist(listed, bins = bins)
@@ -1066,7 +1073,7 @@ def generate_pixel_image(coordinates, path_image, path_save, params = None, mask
             if y < y_min - 1 or y > y_max + 1:
                 pass
             else:
-                for x, column in enumerate(row):
+                for x, _ in enumerate(row):
                     if x < x_min - 1 or x > x_max + 1:
                         pass
                     else:
@@ -1086,7 +1093,7 @@ def generate_pixel_image(coordinates, path_image, path_save, params = None, mask
                 if y < y_min or y > y_max:
                     pass
                 else:
-                    for x, column in enumerate(row):
+                    for x, _ in enumerate(row):
                         if x < x_min or x > x_max:
                             pass
                         else:
@@ -1099,8 +1106,10 @@ def generate_pixel_image(coordinates, path_image, path_save, params = None, mask
         
     if type(path_save_align) == str and save:  
         Image.fromarray(imnp).save(path_save_align + path_image.split('/')[-1])
+        Image.fromarray(imnp).convert('RGB').save(path_save_align + path_image.split('/')[-1].replace('png', 'jpg'))
     if not combined:
         Image.fromarray(imnp).save(os.path.join(path_save, 'selection.png'))
+        Image.fromarray(imnp).convert('RGB').save(os.path.join(path_save, 'selection.jpg'))
     
     return imnp_mask.T   
 
