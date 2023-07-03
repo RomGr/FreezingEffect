@@ -1,1 +1,1 @@
-{"retardance": {"borders": [0, 90], "num_bins": 180}, "depolarization": {"borders": [0, 1.1], "num_bins": 137}, "azimuth": {"borders": [0, 180], "num_bins": 180}, "diattenuation": {"borders": [0, 0.5], "num_bins": 100}}
+{"retardance": {"borders": [0, 90], "num_bins": 80}, "depolarization": {"borders": [0, 1.1], "num_bins": 80}, "azimuth": {"borders": [0, 180], "num_bins": 90}, "diattenuation": {"borders": [0, 0.5], "num_bins": 50}}

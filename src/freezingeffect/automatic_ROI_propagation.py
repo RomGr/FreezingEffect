@@ -42,12 +42,12 @@ def add_all_folders(path_folder, wavelength, path_alignment, pattern = '_FR_'):
     if aligned:
         path_alignment = path_aligned
     else:
-        now = datetime.now()
-        dt_string = path_folder.split('\\')[-1] +'__' + now.strftime("%d/%m/%Y %H:%M:%S").replace(' ', '_').replace('/', '_').replace(':', '_')
-        path_alignment = os.path.join(path_alignment, dt_string)
         created = False
         while not created:
             try:
+                now = datetime.now()
+                dt_string = path_folder.split('\\')[-1] +'__' + now.strftime("%d/%m/%Y %H:%M:%S").replace(' ', '_').replace('/', '_').replace(':', '_')
+                path_alignment = os.path.join(path_alignment, dt_string)
                 os.mkdir(path_alignment)
                 created = True
             except:

@@ -5,7 +5,7 @@ from PIL import Image
 import numpy as np
 import pandas as pd
 import shutil
-import traceback
+import time
 
 from freezingeffect.selection_of_ROIs import analyze_and_get_histograms, load_data_mm, generate_pixel_image, save_parameters
 from freezingeffect.helpers import load_parameters_ROIs
@@ -60,11 +60,30 @@ def collect_data_propagated(WM, path_align_folder, propagation_list, output_fold
             mask_matter_afters.append(GM_mask)
             mask_matter_after_opposites.append(WM_mask)
         
+    MMs = {}
+    path_folders = propagation_list[0][2]
+    for folder in propagation_list[0][1][1:]:
+        MMs[folder] = load_data_mm(os.path.join(path_folders, folder))
+        
     remove = []
     for element in propagation_list:
-        new_folder_name, all_folders, path_folders, wavelength, path_alignment, square_size = element
-        for _, (all_folder, mask_matter_after, mask_matter_after_opposite) in enumerate(zip(all_folders[1:], 
-                                                                    mask_matter_afters, mask_matter_after_opposites)):
+        propagate_measurement(element, mask_matter_afters, mask_matter_after_opposites, path_align_folder, WM, output_folders, MMs, remove)
+        
+
+    path_folders = propagation_list[0][2]
+    all_folders = propagation_list[0][1]
+    with open(os.path.join(path_folders, all_folders[0], 'polarimetry', '550nm', '50x50_images', 
+                        'to_rm_' + type_ + '.pickle'), 'wb') as handle:
+        pickle.dump(remove, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    generate_summary_file(propagation_list)
+    
+    
+def propagate_measurement(element, mask_matter_afters, mask_matter_after_opposites, path_align_folder, WM, output_folders, MMs, remove):
+    new_folder_name, all_folders, path_folders, wavelength, path_alignment, square_size = element
+    
+    for _, (all_folder, mask_matter_after, mask_matter_after_opposite) in enumerate(zip(all_folders[1:], mask_matter_afters, 
+                                                                                        mask_matter_after_opposites)):
 
             to_remove = check_outliers_propagation([all_folder], path_alignment, new_folder_name, mask_matter_after, 
                                                        mask_matter_after_opposite, path_align_folder, WM)
@@ -73,18 +92,11 @@ def collect_data_propagated(WM, path_align_folder, propagation_list, output_fold
                 remove.append([to_remove[0], all_folder])
                 
             data = propagate_measurements(new_folder_name, [all_folder], path_folders, wavelength, output_folders[path_alignment], square_size, 
-                                          path_align_folder, WM, create_dir = True)
+                                          path_align_folder, WM, MMs, create_dir = True)
 
             with open(os.path.join(path_folders, all_folder, 'polarimetry', '550nm', '50x50_images', 
                                 new_folder_name + '_align', 'data_raw' + '.pickle'), 'wb') as handle:
                 pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    with open(os.path.join(path_folders, all_folders[0], 'polarimetry', '550nm', '50x50_images', 
-                        'to_rm_' + type_ + '.pickle'), 'wb') as handle:
-        pickle.dump(remove, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    generate_summary_file(propagation_list)
-    
 
 def check_outliers_propagation(all_folders, path_alignment, new_folder_name, mask_matter_after, mask_matter_after_opposite, path_align_folder, WM):
     """
@@ -112,7 +124,6 @@ def check_outliers_propagation(all_folders, path_alignment, new_folder_name, mas
         the list of the ROIs to remove for further analyses
     """    
     path_align_folder = path_align_folder.replace('to_align', 'aligned')
-    elastic = True
 
     for directory in os.listdir(path_align_folder):
         if path_alignment.split('\\')[-1] in directory:
@@ -169,11 +180,7 @@ def load_propagated_mask(path_image, new_folder_name, WM):
     im = Image.open(path_image)
     imnp = np.array(im)
     
-    for idx, x in enumerate(imnp):
-        for idy, y in enumerate(x):
-            if y != val :
-                imnp[idx, idy] = 0
-    return imnp
+    return imnp == val
 
 
 def check_outliers(mask, mask_matter_after, mask_matter_after_opposite):
@@ -231,7 +238,7 @@ def check_outliers(mask, mask_matter_after, mask_matter_after_opposite):
 
 
 def propagate_measurements(new_folder_name, all_folders, path_folders, wavelength, path_alignment, square_size, 
-                           path_align_folder, WM, create_dir = False):
+                           path_align_folder, WM, MMs, create_dir = False):
     """
     propagate_measurements is the master function used to propagate the ROIs and collect the data for the 
     measurement made after FF for one ROI
@@ -270,9 +277,9 @@ def propagate_measurements(new_folder_name, all_folders, path_folders, wavelengt
     
     if create_dir:
         create_output_dir(output_directory, all_folders, path_folders, wavelength)
-    
+        
     data, dfs, aligned_images_path = get_data_propagation(output_directory, all_folders, path_folders, wavelength, path_alignment, square_size, 
-                    new_folder_name, path_align_folder, WM, create_dir = create_dir)
+                    new_folder_name, path_align_folder, WM, MMs, create_dir = create_dir)
 
     return data, dfs, aligned_images_path
     
@@ -343,8 +350,11 @@ def create_output_dir(output_directory, all_folders, path_folders, wavelength):
         os.mkdir(os.path.join(path_folder_50x50, output_directory))
         
         
+        
+        
+        
 def get_data_propagation(output_directory, all_folders, path_folders, wavelength, path_alignment, square_size, 
-                         new_folder_name, path_align_folder, WM, create_dir = False):
+                         new_folder_name, path_align_folder, WM, MMs, create_dir = False):
     """
     this function allows to extract the values of the polarimetric parameters in the propagated ROIs
 
@@ -396,7 +406,9 @@ def get_data_propagation(output_directory, all_folders, path_folders, wavelength
 
     data = []
     dfs = []
+        
     
+        
     base_folder = path_alignment.split('\\')[-1].split('__')[0]
     for folder in all_folders:
 
@@ -414,7 +426,7 @@ def get_data_propagation(output_directory, all_folders, path_folders, wavelength
             shutil.copy(selected_image, output_path)
             
         else:
-            
+        
             # get the paths to the images
             path_image = None
             if folder in path_alignment:
@@ -432,9 +444,9 @@ def get_data_propagation(output_directory, all_folders, path_folders, wavelength
 
             # load the propagated mask image
             mask = load_propagated_mask(path_image, new_folder_name, WM)
-            
+    
             # load the data (polarimetric parameters)
-            MM_maps, MM = load_data_mm(path_folder)
+            MM_maps, MM = MMs[folder]
             data.append(analyze_and_get_histograms(MM_maps, MM, None, imnp = mask, )[1])
             _ = save_parameters(data[-1], path_output)
 
@@ -449,14 +461,9 @@ def get_data_propagation(output_directory, all_folders, path_folders, wavelength
                 except:
                     pass
 
-            # if create_dir:
-                # selected_image = os.path.join(path_output, 'selection.png')
-                # output_path = os.path.join(path_aligned, 'aligned_images', 'selection', folder + '.png')
-                # print(output_path)
-                # 0/0
-                # shutil.copy(selected_image, output_path)
-        
     return data, dfs, aligned_images_path
+
+
 
 
 def generate_summary_file(propagation_list):

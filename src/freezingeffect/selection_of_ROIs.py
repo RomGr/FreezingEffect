@@ -7,6 +7,8 @@ from tqdm import tqdm
 import traceback
 from scipy.stats import circmean, circstd
 import pandas as pd
+import time
+from collections import defaultdict
 
 from freezingeffect.helpers import load_param_names_link, load_parameters_ROIs, load_histogram_parameters, load_parameter_maps
 from freezingeffect import automatic_ROI_propagation 
@@ -784,13 +786,31 @@ def analyze_and_get_histograms(MM_maps, MM, coordinates, imnp = None, angle = 0)
     
     param_links = load_param_names_link(inv = True)
     results = {}
-    for param, key in param_links.items():
-        results[param] = get_area_of_interest(coordinates, MM_maps[param], parameters[param], masked, param, mat = MM)
-
+    values = get_param_ROIs(coordinates, MM_maps, parameters, masked, param_links, MM)
+    for param, _ in param_links.items():
+        results[param] = get_area_of_interest(coordinates, MM_maps[param], parameters[param], masked, param, values, mat = MM)
+    
     return coordinates, results
 
-
-def get_area_of_interest(params, matrix, param, masked, parameter, mat):
+def get_param_ROIs(params, matrix, param, masked, param_links, mat):
+    values = {}
+    if masked:
+        mask = np.logical_and(params, mat['Msk'])
+        for param, _ in param_links.items():
+            values[param] = np.ma.compressed(np.ma.masked_where(~mask,matrix[param]))
+    else:
+        mat_msk = np.zeros(matrix[list(param_links.keys())[0]].shape)
+        [y_min, y_max, x_min, x_max] = params
+        for idx in range(x_min, x_max + 1):
+            for idy in range(y_min, y_max + 1):
+                mat_msk[idx, idy] = 1
+        mat_msk = mat_msk == 1
+        mask = np.logical_and(mat_msk, mat['Msk'])
+        for param, _ in param_links.items():
+            values[param] = np.ma.compressed(np.ma.masked_where(~mask,matrix[param]))
+    return values
+    
+def get_area_of_interest(params, matrix, param, masked, parameter, values, mat):
     """
     get_area_of_interest extracts the values of one parameter in the ROI, as well as the statistical descriptors
 
@@ -813,21 +833,7 @@ def get_area_of_interest(params, matrix, param, masked, parameter, mat):
     mean, stdev, maximum, listed, median : list
         the values of one parameter in the ROI, as well as the statistical descriptors
     """
-    if masked:
-        listed = []
-        for idx_x, x in enumerate(params):
-            for idx_y, y in enumerate(x):
-                if y != 0 and mat['Msk'][idx_x, idx_y]:
-                    # listed.append((matrix[idx_x][idx_y] - angle)%180)
-                    listed.append(matrix[idx_x][idx_y])
-    else:
-        [y_min, y_max, x_min, x_max] = params
-        listed = []
-        for idx_x, x in enumerate(mat['Msk']):
-            for idx_y, y in enumerate(x):
-                if x_min <= idx_x < x_max and y_min <= idx_y < y_max and y:
-                    # listed.append((matrix[idx_x][idx_y] - angle)%180)
-                    listed.append(matrix[idx_x][idx_y])
+    listed = values[parameter]
 
     if parameter == 'azimuth':
         mean = circmean(listed, high=180)
