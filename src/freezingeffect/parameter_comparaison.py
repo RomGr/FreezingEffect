@@ -442,7 +442,7 @@ def combine_data_cv(df, nb_time_points, azimuth = False):
     if azimuth:
         df_substracted = df.apply(lambda x: subtract_angles(x), axis=0)
     else:
-        df_substracted = df/df.loc[0]
+        df_substracted = df/df.loc[1]
         
     df_cv, cv_big = remove_outliers(df_substracted, nb_time_points)
     for _, cv in enumerate(cv_big):
