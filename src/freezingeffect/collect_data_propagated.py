@@ -5,10 +5,9 @@ from PIL import Image
 import numpy as np
 import pandas as pd
 import shutil
-import time
 
 from freezingeffect.selection_of_ROIs import analyze_and_get_histograms, load_data_mm, generate_pixel_image, save_parameters
-from freezingeffect.helpers import load_parameters_ROIs
+from freezingeffect.helpers import load_parameters_ROIs, get_angle
 
 def collect_data_propagated(WM, path_align_folder, propagation_list, output_folders, data_folder_path):
     """
@@ -59,16 +58,24 @@ def collect_data_propagated(WM, path_align_folder, propagation_list, output_fold
         else:
             mask_matter_afters.append(GM_mask)
             mask_matter_after_opposites.append(WM_mask)
-        
+    
+    angles = {}
+    path_parameter_files = os.path.join(propagation_list[0][-2].replace('to_align' ,'aligned'), 'invReg')
+    wavelength = propagation_list[0][3]
+
+    for folder in propagation_list[0][1][1:]:
+        angles[folder] = get_angle(os.path.join(path_parameter_files, folder + '_' + wavelength + '_realsize_AffineElastic_TransformParameters_0.txt'))
+    
     MMs = {}
     path_folders = propagation_list[0][2]
     for folder in propagation_list[0][1][1:]:
-        MMs[folder] = load_data_mm(os.path.join(path_folders, folder))
+        MMs[folder] = load_data_mm(os.path.join(path_folders, folder), angles[folder])
+        # MMs[folder] = load_data_mm(os.path.join(path_folders, folder), 0)
         
     remove = []
     for element in propagation_list:
         propagate_measurement(element, mask_matter_afters, mask_matter_after_opposites, path_align_folder, WM, output_folders, MMs, remove)
-    
+        
     images_WM, images_GM = get_the_imgs(propagation_list[0], data_folder_path)
     for folder, img in images_WM.items():
         image = Image.fromarray(img).convert('RGB')
@@ -315,6 +322,7 @@ def propagate_measurements(new_folder_name, all_folders, path_folders, wavelengt
         
     data, dfs, aligned_images_path = get_data_propagation(output_directory, all_folders, path_folders, wavelength, path_alignment, square_size, 
                     new_folder_name, path_align_folder, WM, MMs, create_dir = create_dir)
+    
 
     return data, dfs, aligned_images_path
     

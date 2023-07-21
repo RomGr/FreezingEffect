@@ -75,3 +75,17 @@ def load_param_names():
     for idx, l in enumerate(lines):
         lines[idx] = l.replace('\n', '')
     return lines
+
+import numpy as np
+
+def get_angle(fname):
+    with open(fname) as f:
+        lines = f.readlines()
+
+    for line in lines:
+        if 'TransformParameters ' in line:
+            angle_data = line
+    angle_data = angle_data.split(' ')[1:5]
+    angle = np.arctan(float(angle_data[2])/float(angle_data[0]))
+    
+    return angle*360/(2*np.pi)

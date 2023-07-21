@@ -300,7 +300,7 @@ def create_the_masks(path_fixation_folder, match_sequence = 'FRE-FR'):
         _ = get_masks(folder_of_interest)
         
         
-def load_data_mm(path_folder):
+def load_data_mm(path_folder, angle = 0):
     """
     load_data_mm allows to load the Mueller Matrix and the parameters of interest (retardance, diattenuation, azimuth and depolarization)
 
@@ -308,8 +308,8 @@ def load_data_mm(path_folder):
     ----------
     path_folder : str
         the path to the folder
-    wavelength : int or str
-        the wavelength being considered (i.e. '550' or '650')
+    angle : int
+        the correction angle to apply to the Mueller matrix azimuth values
         
     Returns
     -------
@@ -321,7 +321,17 @@ def load_data_mm(path_folder):
         the Mueller matrix
     """
     param_ROIs = load_parameters_ROIs()
-    mat = np.load(os.path.join(path_folder, 'polarimetry', param_ROIs['wavelength'], 'MM.npz'))
+    mat = dict(np.load(os.path.join(path_folder, 'polarimetry', param_ROIs['wavelength'], 'MM.npz')))
+    azimuth = mat['azimuth']
+        
+    if angle != 0:
+        azimuth = mat['azimuth']
+        azimuth_corrected = np.zeros(azimuth.shape)
+        for idx, x in enumerate(azimuth):
+            for idy, y in enumerate(x):
+                azimuth_corrected[idx, idy] = (y - angle) % 180
+        mat['azimuth'] = azimuth_corrected
+        
     param_names_link = load_param_names_link(inv = True)
     pol_parameters = {}
     for param_name, key_MM in param_names_link.items():
@@ -842,6 +852,7 @@ def get_area_of_interest(param, parameter, values):
             mean = circmean(listed, high=180)
             stdev = circstd(listed, high=180)
             median = mean
+            print(mean, stdev)
         else:
             mean = np.mean(listed)
             stdev = np.std(listed)
