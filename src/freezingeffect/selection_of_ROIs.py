@@ -30,11 +30,11 @@ def create_alignment_folder():
     return os.path.join(dir_path, 'temp'), os.path.join(dir_path, 'alignment', 'to_align')
 
 
-def get_the_base_dirs(data_folder_path):
+def get_the_base_dirs(data_folder_path, time_base = 'T0_'):
     base_dirs = []
 
     for folder in os.listdir(data_folder_path):
-        if 'T0_' in folder:
+        if time_base in folder:
             base_dirs.append(os.path.join(data_folder_path, folder))
             
         # 2. remove previously acquired data to allow the selection of new ROIs
@@ -852,7 +852,6 @@ def get_area_of_interest(param, parameter, values):
             mean = circmean(listed, high=180)
             stdev = circstd(listed, high=180)
             median = mean
-            print(mean, stdev)
         else:
             mean = np.mean(listed)
             stdev = np.std(listed)

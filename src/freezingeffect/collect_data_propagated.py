@@ -9,7 +9,7 @@ import shutil
 from freezingeffect.selection_of_ROIs import analyze_and_get_histograms, load_data_mm, generate_pixel_image, save_parameters
 from freezingeffect.helpers import load_parameters_ROIs, get_angle
 
-def collect_data_propagated(WM, path_align_folder, propagation_list, output_folders, data_folder_path):
+def collect_data_propagated(WM, path_align_folder, propagation_list, output_folders, data_folder_path, time_base):
     """
     check_outliers is function checking if a ROI should be removed because if it is an outlier 
     (defined as ROI moving from grey/white matter to white/grey matter or background)
@@ -46,37 +46,46 @@ def collect_data_propagated(WM, path_align_folder, propagation_list, output_fold
     mask_matter_after_opposites = []
     
     
-    for folder in propagation_list[0][1][1:]:
-        path_fol = os.path.join(propagation_list[0][2], folder)
-        # _ = get_masks(path_fol, bg = False)
-        path_annotation = os.path.join(path_fol, 'annotation')
-        WM_mask = plt.imread(os.path.join(path_annotation, 'WM_merged.png'))
-        GM_mask = plt.imread(os.path.join(path_annotation, 'GM_merged.png'))
-        if WM:
-            mask_matter_afters.append(WM_mask)
-            mask_matter_after_opposites.append(GM_mask)
+    for folder in propagation_list[0][1]:
+        if time_base in folder:
+            pass
         else:
-            mask_matter_afters.append(GM_mask)
-            mask_matter_after_opposites.append(WM_mask)
+            path_fol = os.path.join(propagation_list[0][2], folder)
+            # _ = get_masks(path_fol, bg = False)
+            path_annotation = os.path.join(path_fol, 'annotation')
+            WM_mask = plt.imread(os.path.join(path_annotation, 'WM_merged.png'))
+            GM_mask = plt.imread(os.path.join(path_annotation, 'GM_merged.png'))
+            if WM:
+                mask_matter_afters.append(WM_mask)
+                mask_matter_after_opposites.append(GM_mask)
+            else:
+                mask_matter_afters.append(GM_mask)
+                mask_matter_after_opposites.append(WM_mask)
     
     angles = {}
     path_parameter_files = os.path.join(propagation_list[0][-2].replace('to_align' ,'aligned'), 'invReg')
     wavelength = propagation_list[0][3]
 
-    for folder in propagation_list[0][1][1:]:
-        angles[folder] = get_angle(os.path.join(path_parameter_files, folder + '_' + wavelength + '_realsize_AffineElastic_TransformParameters_0.txt'))
+    for folder in propagation_list[0][1]:
+        if time_base in folder:
+            pass
+        else:
+            angles[folder] = get_angle(os.path.join(path_parameter_files, folder + '_' + wavelength + '_realsize_AffineElastic_TransformParameters_0.txt'))
     
     MMs = {}
     path_folders = propagation_list[0][2]
-    for folder in propagation_list[0][1][1:]:
-        MMs[folder] = load_data_mm(os.path.join(path_folders, folder), angles[folder])
+    for folder in propagation_list[0][1]:
+        if time_base in folder:
+            pass
+        else:
+            MMs[folder] = load_data_mm(os.path.join(path_folders, folder), angles[folder])
         # MMs[folder] = load_data_mm(os.path.join(path_folders, folder), 0)
         
     remove = []
     for element in propagation_list:
-        propagate_measurement(element, mask_matter_afters, mask_matter_after_opposites, path_align_folder, WM, output_folders, MMs, remove)
-        
-    images_WM, images_GM = get_the_imgs(propagation_list[0], data_folder_path)
+        propagate_measurement(element, mask_matter_afters, mask_matter_after_opposites, path_align_folder, WM, output_folders, MMs, remove, time_base)
+
+    images_WM, images_GM = get_the_imgs(propagation_list[0], data_folder_path, time_base)
     for folder, img in images_WM.items():
         image = Image.fromarray(img).convert('RGB')
         image.save(os.path.join(data_folder_path, folder, 'polarimetry', '550nm', '50x50_images', 'WM_all_ROIs.png'))
@@ -92,49 +101,58 @@ def collect_data_propagated(WM, path_align_folder, propagation_list, output_fold
 
     generate_summary_file(propagation_list)
     
-def get_the_imgs(element, data_folder_path):
-    folders = element[1][1:]
+def get_the_imgs(element, data_folder_path, time_base):
+    folders = element[1]
     path_img = element[4]
     images_WM = {}
     images_GM = {}
     for folder in folders:
-        path_i = os.path.join(path_img, 'invReg', 'mask_PrpgTo_' + folder + '_550nm_realsize_AffineElastic_TransformParameters_1.png')
-        path_i = path_i.replace('to_align', 'aligned')
-        image = np.array(Image.open(path_i))
+        if not time_base in folder:
+            path_i = os.path.join(path_img, 'invReg', 'mask_PrpgTo_' + folder + '_550nm_realsize_AffineElastic_TransformParameters_1.png')
+            path_i = path_i.replace('to_align', 'aligned')
+            image = np.array(Image.open(path_i))
+            
+            img_gs = np.array(Image.open(os.path.join(data_folder_path, folder, 'polarimetry', '550nm', 'Intensity_img.png')))
+            for idx, x in enumerate(image):
+                for idy, y in enumerate(x):
+                    if y != 0:
+                        # if y > 0 and y <= 25:
+                        if y > 25:
+                            img_gs[idx, idy] = 255
+            images_GM[folder] = img_gs
+            
+            img_gs = np.array(Image.open(os.path.join(data_folder_path, folder, 'polarimetry', '550nm', 'Intensity_img.png')))
+            for idx, x in enumerate(image):
+                for idy, y in enumerate(x):
+                    if y != 0:
+                        if y > 0 and y <= 25:
+                            img_gs[idx, idy] = 0
+            images_WM[folder] = img_gs
+        else:
+            pass
         
-        img_gs = np.array(Image.open(os.path.join(data_folder_path, folder, 'polarimetry', '550nm', 'Intensity_img.png')))
-        for idx, x in enumerate(image):
-            for idy, y in enumerate(x):
-                if y != 0:
-                    # if y > 0 and y <= 25:
-                    if y > 25:
-                        img_gs[idx, idy] = 255
-        images_GM[folder] = img_gs
-        
-        img_gs = np.array(Image.open(os.path.join(data_folder_path, folder, 'polarimetry', '550nm', 'Intensity_img.png')))
-        for idx, x in enumerate(image):
-            for idy, y in enumerate(x):
-                if y != 0:
-                    if y > 0 and y <= 25:
-                        img_gs[idx, idy] = 0
-        images_WM[folder] = img_gs
         
     return images_WM, images_GM
     
-def propagate_measurement(element, mask_matter_afters, mask_matter_after_opposites, path_align_folder, WM, output_folders, MMs, remove):
+def propagate_measurement(element, mask_matter_afters, mask_matter_after_opposites, path_align_folder, WM, output_folders, MMs, remove, time_base):
     new_folder_name, all_folders, path_folders, wavelength, path_alignment, square_size = element
-    
-    for _, (all_folder, mask_matter_after, mask_matter_after_opposite) in enumerate(zip(all_folders[1:], mask_matter_afters, 
-                                                                                        mask_matter_after_opposites)):
+    all_folders_cleaned = []
+    for folder in all_folders:
+        if not time_base in folder:
+            all_folders_cleaned.append(folder)
+    all_folders = all_folders_cleaned
 
+    for _, (all_folder, mask_matter_after, mask_matter_after_opposite) in enumerate(zip(all_folders, mask_matter_afters, 
+                                                                                        mask_matter_after_opposites)):
+        if not time_base in all_folder:
             to_remove = check_outliers_propagation([all_folder], path_alignment, new_folder_name, mask_matter_after, 
-                                                       mask_matter_after_opposite, path_align_folder, WM)
+                                                        mask_matter_after_opposite, path_align_folder, WM)
 
             if len(to_remove) > 0:
                 remove.append([to_remove[0], all_folder])
-                
+                    
             data = propagate_measurements(new_folder_name, [all_folder], path_folders, wavelength, output_folders[path_alignment], square_size, 
-                                          path_align_folder, WM, MMs, create_dir = True)
+                                        path_align_folder, WM, MMs, create_dir = True)
 
             with open(os.path.join(path_folders, all_folder, 'polarimetry', '550nm', '50x50_images', 
                                 new_folder_name + '_align', 'data_raw' + '.pickle'), 'wb') as handle:
@@ -177,12 +195,13 @@ def check_outliers_propagation(all_folders, path_alignment, new_folder_name, mas
     _ = path_alignment.split('/')[-1].split('__')[0]
     
     for folder in all_folders:
-
         path_image = None
         img_of_interest = []
+        
         for img in os.listdir(os.path.join(path_aligned, 'invReg')):
             if folder in img and '_PrpgTo_' in img and 'AffineElastic_TransformParameters' in img and '.png' in img:
                 img_of_interest.append(img)
+                
         assert len(img_of_interest) == 2
 
         for img in img_of_interest:
@@ -576,5 +595,9 @@ def get_path_50x50_folder(path_folders, folder, new_folder_name, wavelength, ali
         path_50x50_folder = os.path.join(path_50x50, new_folder_name)
     else:
         path_50x50_folder = os.path.join(path_50x50, new_folder_name + '_align')
-    assert os.path.exists(path_50x50_folder)
+        try:
+            os.mkdir(path_50x50_folder)
+        except FileExistsError:
+            pass
+
     return path_50x50_folder
