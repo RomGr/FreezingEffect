@@ -36,7 +36,7 @@ def get_parameters():
     return wavelength, match_sequence, measurement, max_, max_nb
 
 
-def get_data_folders(path_folder, wavelength = '550nm', match_sequence = 'PIG-CUSA'):
+def get_data_folders(path_folder, wavelength = '550nm', match_sequence = 'PIG-CUSA', time_base = 'T0'):
     """
     get_data_folders is used to find all the folders containing the match_sequence given as an input
 
@@ -65,13 +65,11 @@ def get_data_folders(path_folder, wavelength = '550nm', match_sequence = 'PIG-CU
     base_folders = []
     for folder in folders:
         if re.findall(match_sequence, folder):
-            if '-T0_' in folder:
+            if time_base in folder:
                 base_folders.append(os.path.join(path_folder, folder))
-
-
     
     # define the matching sequence for the first measurement folder
-    matching = 'T0'
+    matching = time_base
     
     # check for subfolders containing the xlsx files produced with the interactive square selector
     data_folders = []
