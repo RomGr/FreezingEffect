@@ -14,7 +14,7 @@ authors = [
     { email = "romain.gros@unibe.ch", name = "Romain Gros" },
 ]
 dynamic = ["version"]
-dependencies = []
+dependencies = ["Pillow", "matplotlib", "numpy", "pandas", "scipy", "tqdm"]
 
 [tool.hatch.version]
 path = "src/freezingeffect/__init__.py"

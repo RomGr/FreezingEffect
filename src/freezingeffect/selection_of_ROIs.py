@@ -7,8 +7,6 @@ from tqdm import tqdm
 import traceback
 from scipy.stats import circmean, circstd
 import pandas as pd
-import time
-from collections import defaultdict
 
 from freezingeffect.helpers import load_param_names_link, load_parameters_ROIs, load_histogram_parameters, load_parameter_maps
 from freezingeffect import automatic_ROI_propagation 
