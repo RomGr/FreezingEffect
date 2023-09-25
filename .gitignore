@@ -107,4 +107,5 @@ ENV/
 # SPECIFIC folders
 results
 src/freezingeffect/alignment
+data
 
