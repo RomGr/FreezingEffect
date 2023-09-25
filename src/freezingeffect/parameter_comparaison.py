@@ -440,7 +440,7 @@ def combine_data_cv(df, nb_time_points, azimuth = False):
     if azimuth:
         df_substracted = df.apply(lambda x: subtract_angles(x), axis=0)
     else:
-        df_substracted = df/df.loc[1]
+        df_substracted = df/df.loc[0]
         
     df_cv, cv_big = remove_outliers(df_substracted, nb_time_points)
     for _, cv in enumerate(cv_big):
@@ -592,8 +592,8 @@ def t_test(data_all, times, param_interest):
 
                         # and perform the t_test, comparing either the two series or the CV with 0
                         for time in times:
-                            dof = len(val.dropna()[[times[1], time]]) - 1
-                            before = val[times[1]].dropna()
+                            dof = len(val.dropna()[[times[0], time]]) - 1
+                            before = val[times[0]].dropna()
                             after = val[time].dropna()
                             n_1 = len(before)
                             n_2 = len(after)
@@ -619,15 +619,15 @@ def t_test(data_all, times, param_interest):
 
                         # and perform the t_test, comparing either the two series or the CV with 0
                         for time in times:
-                            dof = len(val.dropna()[[times[1], time]]) - 1
-                            before = val[times[1]].dropna()
+                            dof = len(val.dropna()[[times[0], time]]) - 1
+                            before = val[times[0]].dropna()
                             after = val[time].dropna()
                             n_1 = len(before)
                             n_2 = len(after)
 
                             stat, p_val = mannwhitneyu(before, after)
                             
-                            before = val[times[1]].dropna()
+                            before = val[times[0]].dropna()
                             after = val[time].dropna()
                             paired_t_test_time[time] = [stat, p_val, n_1, n_2, np.mean(before), 
                                                             np.std(before), np.mean(after), np.std(after)]

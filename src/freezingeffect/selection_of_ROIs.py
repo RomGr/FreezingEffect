@@ -34,6 +34,7 @@ def get_the_base_dirs(data_folder_path, time_base = 'T0_'):
     base_dirs = []
 
     for folder in os.listdir(data_folder_path):
+        
         if time_base in folder:
             base_dirs.append(os.path.join(data_folder_path, folder))
             
@@ -124,7 +125,7 @@ def get_masks(path, bg = True):
     
     # add the masks to the different lists
     for file in os.listdir(path):
-        if '.txt' in file:
+        if '.txt' in file or 'noise' in file:
             pass
         else:
             im = Image.open(os.path.join(path, file))
@@ -134,7 +135,7 @@ def get_masks(path, bg = True):
                 BG.append(imarray)
             elif 'WM' in file and not 'merged' in file:
                 WM.append(imarray)
-            elif 'merged' in file or 'mask-viz' in file or 'mask_total' in file:
+            elif 'merged' in file or 'mask-viz' in file or 'mask_total' in file or 'ROI' in file:
                 pass
             else:
                 raise(NotImplementedError)
